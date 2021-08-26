@@ -2,10 +2,7 @@
   "name": "HW12_EmployeeTracker",
   "version": "1.0.0",
   "description": "Redo",
-  "main": "app.js",
-  "directories": {
-    "lib": "lib"
-  },
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,10 +18,9 @@
   },
   "homepage": "https://github.com/nkhan14/HW12_EmployeeTracker#readme",
   "dependencies": {
-    "express": "^4.17.1",
-    "inq": "^0.1.6",
+    "console.table": "^0.10.0",
     "inquirer": "^8.1.2",
     "mysql": "^2.18.1",
-    "sequelize": "^6.6.5"
+    "orm": "^5.0.7"
   }
 }
