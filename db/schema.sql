@@ -4,14 +4,14 @@ CREATE DATABASE s2genomics_db;
 USE s2genomics_db;
 
 -- create a table for department information
-CREATE TABLE departments (
+CREATE TABLE department (
     id INT NOT NULL AUTO_INCREMENT,
     name VARCHAR(30) NOT NULL,
     PRIMARY KEY (id)
 );
 
 -- create a table for employees
-CREATE TABLE employees (
+CREATE TABLE employee (
     id INT(10) NOT NULL AUTO_INCREMENT,
     first_name VARCHAR(30) NOT NULL,
     last_name VARCHAR(30) NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE employees (
 
 -- create a table for employee roles
 
-CREATE TABLE roles (
+CREATE TABLE role (
     id INT(10) NOT NULL AUTO_INCREMENT,
     title VARCHAR(30) NOT NULL,
     salary DECIMAL(10,2) NOT NULL,

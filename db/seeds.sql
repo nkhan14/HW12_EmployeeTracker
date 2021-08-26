@@ -1,25 +1,31 @@
--- -- creating department categories
--- INSERT INTO department (dept_name) VALUES ('Administration'), ('In House Laboratory'), ('Management');
+-- creating department categories
+SELECT * FROM s2genomics_db.department;
 
--- -- determining the different roles
--- INSERT INTO s2_role (title, salary, dept_id) VALUES
--- ('Chief Executive Officer', 200000.00, 3),
--- ('Chief Operations Officer', 175000.00, 3),
--- ('Sales Manager', 150000.00, 3),
--- ('Field Applications Scientist', 110000.00, 2),
--- ('Lead Research Associate', 90000.00, 2),
--- ('Research Associate', 70000.00, 2),
--- ('Administration Lead', 70000.00, 1),
--- ('Administration Employee', 50000.00, 1);
+INSERT INTO department (name) VALUES ('Management'), ('Administration'), ('In Laboratory Personnel'), ('Sales') ;
 
--- -- initial employee data
--- INSERT INTO employees (first_name, last_name, emp_role_id, manager_id) VALUES
--- ('Stevan', 'Jovanovich', 1, 1),
--- ('John', 'Bashkins', 2, 2),
--- ('Austin', 'Dunyack', 3, 3),
--- ('Nathan', 'Pereira', 4, NULL),
--- ('Nabiha', 'Khan', 5, NULL),
--- ('Danielle', 'Meyer', 6, NULL),
--- ('Trish', 'Silva', 7, NULL);
+-- determining the different roles
+SELECT * FROM s2genomics_db.role;
+
+INSERT INTO role (id, title, salary, department_id) VALUES
+(1, 'Chief Executive Officer', 200000.00, 1),
+(2, 'Chief Operations Officer', 175000.00, 1),
+(3, 'Sales Manager', 150000.00, 1),
+(4, 'Field Applications Scientist', 110000.00, 3),
+(5, 'Lead Research Associate', 90000.00, 3),
+(6, 'Research Associate', 70000.00, 3),
+(7, 'Administration Lead', 70000.00, 2),
+(8, 'Administration Employee', 50000.00, 2);
+
+-- initial employee data
+SELECT * FROM s2genomics_db.employee;
+
+INSERT INTO employee (id, first_name, last_name, role_id, manager_id) VALUES
+(1, 'Stevan', 'Jovanovich', 1, 1),
+(2, 'John', 'Bashkins', 2, 2),
+(3, 'Austin', 'Dunyack', 3, 3),
+(4, 'Nathan', 'Pereira', 4, NULL),
+(5, 'Nabiha', 'Khan', 4, NULL),
+(6, 'Danielle', 'Meyer', 5, NULL),
+(7, 'Trish', 'Silva', 7, NULL);
 
 -- I my NOT need this?? Lets see??

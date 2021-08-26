@@ -1,400 +1,463 @@
-const orm = require("./config/orm.js");
-const inquirer = require("inquirer");
+// connection to the dependencies
+const mysql = require('mysql');
+const inquirer = require('inquirer');
 
-// View employees, view departments, view roles, add employee, add department, add role, update role, update manager, 
-// view employees by manager, delete employee, delete role, delete department, quit
+// connection to mysql dolphins
+const connection = mysql.createConnection({
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: 'Pass@20237884',
+  database: 's2genomics_db',
+});
 
-
-// This function generates the top-level choices for the user.  Upon selecting any of them, a new function is executed
-// specific to that choice.  Upon completion of the selected task, this function is called once again.
-function mainMenu() {
-    console.log("Welcome to the Employee Tracker!\n")
-    inquirer.prompt({
-        type: "list",
-        message: "Choose what you would like to do",
-        choices: [
-            "View employees",
-            "View departments",
-            "View roles",
-            "Add employee",
-            "Add department",
-            "Add role",
-            "Update role",
-            "Update manager",
-            "Display employees by manager",
-            "Delete an employee",
-            "Delete a role",
-            "Delete a department",
-            "View utilized budget for a department",
-            "Quit"
-        ],
-        name: "choice"
-    }).then(function({ choice }) {
-        if (choice === "View employees") {
-            orm.viewEmployees()
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        } else if (choice === "View departments") {
-            orm.viewDepartments()
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        } else if (choice === "View roles") {
-            orm.viewRoles()
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        } else if (choice === "Add employee") {
-            addEmployeePrompt();
-        } else if (choice === "Add department") {
-            addDepartmentPrompt();
-        } else if (choice === "Add role") {
-            addRolePrompt();
-        } else if (choice === "Update role") {
-            updateRolePrompt();
-        } else if (choice === "Update manager") {
-            updateManagerPrompt();
-        } else if (choice === "Display employees by manager") {
-            displayByMgrPrompt();
-        } else if (choice === "Delete an employee") {
-            deleteEmployeePrompt();
-        } else if (choice === "Delete a role") {
-            deleteRolePrompt();
-        } else if (choice === "Delete a department") {
-            deleteDepartmentPrompt();
-        } else if (choice === "View utilized budget for a department") {
-            displayUtilizedBudgetPrompt();
-        } else {
-            orm.endConnection();
+// main menu of the app
+const loadPrompts = () => {
+  inquirer
+      .prompt([
+          {
+              name: 'prompts',
+              type: 'rawlist',
+              message: "What would you like to do?",
+              choices: [
+                "View all employees", 
+                "View all employees by department", 
+                "Add employee", 
+                "Remove employee", 
+                "Update employee role", 
+                "View all roles", 
+                "Add role", 
+                "Remove role", 
+                "View all departments", 
+                "Add department", 
+                "Remove department", 
+                "Quit"
+              ],
+          },
+      ])
+      .then((answer) => {
+        // taking in the users answers and executing the specific function
+        if (answer.prompts === "View all employees") {
+          getAllEmployees();
+        } else if (answer.prompts === "View all employees by department") {
+          getEmployeesByDept();
+        } else if (answer.prompts === "Add employee") {
+          addEmployee();
+        } else if (answer.prompts === "Remove employee") {
+          remEmployee();
+        } else if (answer.prompts === "Update employee role") {
+          updEmployeeRole();
+        } else if (answer.prompts === "View all roles") {
+          getAllRoles();
+        } else if (answer.prompts === "Add role") {
+          addRole();
+        } else if (answer.prompts === "Remove role") {
+          remRole();
+        } else if (answer.prompts === "View all departments") {
+          getAllDept();
+        } else if (answer.prompts === "Add department") {
+          addDept();
+        } else if (answer.prompts === "Remove department") {
+          remDept();
+        } else if (answer.prompts === "Quit") {
+          quit();
         }
-    });
-}
+  })
+};
 
-// Prompt user for information about new employee, calls ORM function to add it to the database
-function addEmployeePrompt() {
-    orm.getEmployees()
-    .then(function(res) {
-        const managerArray = [];
-        for (let i=0; i<res.length; i++) {
-            managerArray.push(res[i].name);
-        }
-        managerArray.push("none");
-        orm.getRoles()
-        .then(function(response) {
-            const roleTitleArray = [];
-            for (let i=0; i<response.length; i++) {
-                roleTitleArray.push(response[i].title);
-            }
-            inquirer.prompt([{
-                type: "input",
-                message: "Enter employee's first name",
-                name: "firstName"
-            },
-            {
-                type: "input",
-                message: "Enter employee's last name",
-                name: "lastName"
-            },
-            {
-                type: "list",
-                message: "Select employee's role",
-                choices: roleTitleArray,
-                name: "role"
-            },
-            {
-                type: "list",
-                message: "Select employee's manager",
-                choices: managerArray,
-                name: "manager"
-            }]).then(function({firstName, lastName, role, manager}) {
-                const roleId = response[roleTitleArray.indexOf(role)].id;
-                if (manager === "none") {
-                    orm.addEmployee(firstName, lastName, roleId)
-                    .then(function() {
-                        console.log("\n");
-                        mainMenu();
-                    });
-                } else {
-                    const managerId = res[managerArray.indexOf(manager)].id;
-                    orm.addEmployee(firstName, lastName, roleId, managerId)
-                    .then(function() {
-                        console.log("\n");
-                        mainMenu();
-                    });
-                }
-            });
-    });
-    });
-}
+// showing all employees
+const getAllEmployees = () => {
+  // uses the employee's role id and the role's department id to create one table where all information can be viewed
+  connection.query('SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS "department", employee.manager_id FROM employee INNER JOIN role ON role.id = employee.role_id INNER JOIN department ON department.id = role.department_id', (err, res) => {
+    if (err) throw err;
+    console.table(res);
+    // returns user to main menu
+    loadPrompts();
+  });
+};
 
-// Prompts user for information needed to make new department, then calls ORM function to add it to the database
-function addDepartmentPrompt() {
-    orm.getDepartments()
-    .then(function(response) {
-        const deptArray = [];
-        for (let i=0; i<response.length; i++) {
-            deptArray.push(response[i].name);
-        }
-        inquirer.prompt({
-            type: "input",
-            message: "Enter the name of new department you'd like to add",
-            name: "deptName"
-        }).then(function({deptName}) {
-            if (deptArray.includes(deptName)) {
-                console.log("There is already a department with that name!\n");
-                mainMenu();
-            } else {
-                orm.addDepartment(deptName)
-                .then(function() {
-                    console.log("\n");
-                    mainMenu();
-                });
-            }
-        });
-    });
-}
-
-// Prompts user for information needed to make a new role, then calls ORM function to add it to the database
-function addRolePrompt() {
-    orm.getRoles()
-    .then(function(roles) {
-        const roleArray = [];
-        for (let i=0; i<roles.length; i++) {
-            roleArray.push(roles[i].title);
-        }
-        orm.getDepartments()
-        .then(function(deptArray) {
-            const deptNames = [];
-            for (let i=0; i<deptArray.length; i++) {
-                deptNames.push(deptArray[i].name);
-            }
-            inquirer.prompt([{
-                type: "input",
-                message: "Enter the name of the role you would like to add",
-                name: "title"
-            },
-            {
-                type: "input",
-                message: "Enter the annual salary of the new role",
-                name: "salary"
-            },
-            {
-                type: "list",
-                message: "Select the department in which the new role will work",
-                choices: deptNames,
-                name: "department"
-            }]).then(function({title, salary, department}) {
-                const deptId = deptArray[deptNames.indexOf(department)].id;
-                if (roleArray.includes(title)) {
-                    console.log("Error - that title already exists!\n");
-                    mainMenu();
-                } else {
-                    orm.addRole(title, salary, deptId)
-                    .then(function() {
-                        console.log("\n");
-                        mainMenu();
-                    });
-                }
-            });
-        });
-    }); 
-}
-
-// Grabs all employees, asks user which one they want to update, asks what role the employee should have, then calls ORM function to update the database
-function updateRolePrompt() {
-    orm.getEmployees()
-    .then(function(res) {
-        const empArray = [];
-        for (let i=0; i<res.length; i++) {
-            empArray.push(res[i].name);
-        }
-        orm.getRoles()
-        .then(function(response) {
-            const roleArray = [];
-            for (let i=0; i<response.length; i++) {
-                roleArray.push(response[i].title);
-            }
-            inquirer.prompt([{
-                type: "list",
-                message: "Choose the employee whose role you'd like to update",
-                choices: empArray,
-                name: "employee"
-            },
-            {
-                type: "list",
-                message: "Select the employee's new role",
-                choices: roleArray,
-                name: "role"
-            }]).then(function({employee, role}) {
-                const empId = res[empArray.indexOf(employee)].id;
-                orm.updateRole(empId, role)
-                .then(function() {
-                    console.log("\n");
-                    mainMenu();
-                })
-            })
-        })
+// displays all employees by selected department
+const getEmployeesByDept = () => {
+  inquirer
+    .prompt({
+      name: 'department',
+      type: 'rawlist',
+      message: 'What department would you like to view?',
+      choices: [
+        "Management",
+        "Administration",
+        "In Lab Personnel",
+        "Sales"
+      ]
     })
-}
+    .then((answer) => {
+      // shows the same information as getAllEmployees but includes a where ? clause that filters results by department
+      connection.query('SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS "department", employee.manager_id FROM employee INNER JOIN role ON role.id = employee.role_id INNER JOIN department ON department.id = role.department_id WHERE ?', { name: answer.department }, (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        loadPrompts();
+      });
+    });
+};
 
-// Grabs all employees, asks user which one they want to update, asks what manager the employee should have, then calls ORM function to update the database
-function updateManagerPrompt() {
-    orm.getEmployees()
-    .then(function(employees) {
-        const empArray = [];
-        for (let i=0; i<employees.length; i++) {
-            empArray.push(employees[i].name);
-        }
-        inquirer.prompt([{
-            type: "list",
-            message: "Select the employee whose manager you would like to update",
-            choices: empArray,
-            name: "employee"
+// adds a new employee
+const addEmployee = () => {
+  // empty arrays to store data from mysql query - used to populate inquirer choices below
+  let managerInfo = [];
+  let managerChoice = [];
+  let roleChoice = [];
+
+  // getting managers to present user with a list of managers to assign the new employee to
+  connection.query('SELECT employee.first_name, employee.last_name, employee.id FROM employee WHERE role_id = ?', [1], (err, res) => {
+    if (err) throw err;
+
+    // loops through query results, joins first and last name as single string, pushes to array to be presented as inquirer choice below
+    res.forEach(value => {
+      managerName = `${value.first_name} ${value.last_name}`
+      managerChoice.push(managerName);
+      let managerObj = {
+        first_name: value.first_name,
+        last_name: value.last_name,
+        id: value.id,
+      }
+      managerInfo.push(managerObj);
+    });
+
+    // getting role title and id from db to present as choices for inquirer
+    connection.query('SELECT role.title, role.id FROM role', (err, res) => {
+      if (err) throw err;
+
+      res.forEach(value => {
+        roleChoice.push(value.title);
+      });
+
+      inquirer
+      .prompt([
+        {
+          name: 'firstName',
+          type: 'input',
+          message: "What is the employee's first name?",
         },
         {
-            type: "list",
-            message: "Select the employee's new manager",
-            choices: empArray,
-            name: "manager"
-        }]).then(function({employee, manager}) {
-            if (employee === manager) {
-                console.log("Error - you cannot assign an employee to manage him/herself!");
-                mainMenu();
-            } else {
-                const empId = employees[empArray.indexOf(employee)].id;
-                const mgrId = employees[empArray.indexOf(manager)].id;
-                orm.updateManager(empId, mgrId)
-                .then(function() {
-                    console.log("\n");
-                    mainMenu();
-                });
+          name: 'lastName',
+          type: 'input',
+          message: "What is the employee's last name?",
+        },
+        {
+          name: 'manager',
+          type: 'rawlist',
+          message: "Who is this employee's manager?",
+          choices: managerChoice,
+        },
+        {
+          name: 'role',
+          type: 'rawlist',
+          message: "What is this employee's role?",
+          choices: roleChoice,
+        },
+      ])
+      .then((answer) => {  
+
+        // checks for a strict match between the user selected manager and the manager information queried with mysql 
+        const splitManager = answer.manager.split(' ');
+        for (i = 0; i < managerInfo.length; i++) {
+          if (splitManager[0] === managerInfo[i].first_name && splitManager[1] === managerInfo[i].last_name) {
+            foundManagerId = managerInfo[i].id;
+          }
+        }
+
+        // checks for a match between user chosen role and all possible role titles returned from query 
+        res.forEach(value => {
+          if (answer.role === value.title) {
+            foundRoleId = value.id;
+          }
+        });
+
+        // inserting new employee with all the info generated above, including role id and manager id's 
+        connection.query(
+          'INSERT INTO employee SET ?',
+            {
+            first_name: answer.firstName,
+            last_name: answer.lastName,
+            role_id: foundRoleId,
+            manager_id: foundManagerId,
+            },
+  
+          (err, res) => {
+            if (err) throw err;
+            console.log(`\n-----\n${answer.firstName} ${answer.lastName} has been added.\n-----\n`);
+            loadPrompts();
             }
+          );
         });
-    });
-}
+      });
+  });
+};
 
-// Grabs all employees, asks the user for which one they want to see direct reports, then calls ORM function to query database and display results
-function displayByMgrPrompt() {
-    orm.getEmployees()
-    .then(function(employees) {
-        const empArray = [];
-        for (let i=0; i<employees.length; i++) {
-            empArray.push(employees[i].name);
+// removes an employee
+const remEmployee = () => {
+  let remChoices = [];
+
+  // finding all employee first and last names from mysql to be presented as inquirer choices
+  connection.query("SELECT employee.first_name, employee.last_name FROM employee", (err, res) => {
+    if (err) throw err;
+      res.forEach(choice => {
+        fullName = `${choice.first_name} ${choice.last_name}`;
+        remChoices.push(fullName);
+      });
+  
+      inquirer.prompt([
+        {
+          name: "employeeRemove",
+          type: "rawlist",
+          message: "Which employee would you like to remove?",
+          choices: remChoices,
         }
-        inquirer.prompt({
-            type: "list",
-            message: "Select the manager whose employees you would like to view",
-            choices: empArray,
-            name: "manager"
-        }).then(function({manager}) {
-            const mgrId = employees[empArray.indexOf(manager)].id;
-            orm.viewEmpsByMgr(mgrId)
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
+      ])
+        .then((answer) => {
+          // splits the previously joined string into individual words that serve as first and last name
+          const splitAnswer = answer.employeeRemove.split(' ');
+          // removes employee from db where there is a name match 
+          connection.query(`DELETE FROM employee WHERE first_name = ? AND last_name = ?`, [splitAnswer[0], splitAnswer[1]] , (err, res) => {
+            if (err) throw err;
+            console.log(`\n-----\n${answer.employeeRemove} has been removed.\n-----\n`);
+            loadPrompts();
+          });
+      });
+  });
+};
+
+// updates employee's role
+const updEmployeeRole = () => {
+  let updEmplChoices = [];
+  let roleChoices = [];
+  let roleInfo = [];
+
+  // queries first and last name from employee table to present them as choices within inquirer
+  connection.query("SELECT employee.first_name, employee.last_name FROM employee", (err, res) => {
+    if (err) throw err; 
+
+    res.forEach(choice => {
+      fullName = `${choice.first_name} ${choice.last_name}`;
+      updEmplChoices.push(fullName);
+    });
+  });
+
+  // finding role title for inquirer choices and role id for updating employee role id later
+  connection.query("SELECT role.title, role.id FROM role", (err, res) => {
+    if (err) throw err;
+
+    res.forEach(role => {
+      let roleObj = {
+        title: role.title,
+        id: role.id,
+      }
+      roleChoices.push(role.title);
+      roleInfo.push(roleObj);
+    });
+
+    inquirer.prompt([
+      {
+        name: "employeeUpd",
+        type: "rawlist",
+        message: "Which employee would you like to update?",
+        choices: updEmplChoices,
+      },
+      {
+        name: "roleUpd",
+        type: "rawlist",
+        message: "What is this employee's new role?",
+        choices: roleChoices,
+      },
+    ])
+      .then((answer) => {
+        let chosenName = answer.employeeUpd.split(' ');
+
+        // comparing user choice to all possible roles from query
+        res.forEach(value => {
+          if (answer.roleUpd === value.title) {
+            newRoleId = value.id;
+          }
+        });
+
+        // updates the employee's role id in the db where there is a first and last name match 
+        connection.query("UPDATE employee SET role_id = ? WHERE first_name = ? AND last_name = ?", [newRoleId, chosenName[0], chosenName[1]], (err, res) => {
+          if (err) throw err; 
+            console.log(`\n-----\n${chosenName.join(' ')}'s role has been updated.\n-----\n`)
+            loadPrompts();
         });
     });
-}
+  });
+};
 
-// Grabs all employees, asks user which one they want to delete, then calls ORM function to delete it from the database
-function deleteEmployeePrompt() {
-    orm.getEmployees()
-    .then(function(employees) {
-        const empArray = [];
-        for (let i=0; i<employees.length; i++) {
-            empArray.push(employees[i].name);
+// shows all roles
+const getAllRoles = () => {
+  connection.query('SELECT role.title, role.salary, role.department_id FROM role', (err, res) => {
+    if (err) throw err;
+    console.table(res);
+    loadPrompts();
+  });
+};
+
+// adds a role
+const addRole = () => {
+  let roleChoices = [];
+
+  // finding department name and id's from db to provide user with the choice of what department to insert the role into
+  connection.query("SELECT department.name, department.id FROM department", (err, res) => {
+    if (err) throw err
+
+      res.forEach(value => {
+        roleChoices.push(value.name);
+      });
+
+      inquirer
+      .prompt([
+        {
+          name: 'roleTitle',
+          type: 'input',
+          message: "What is the title of this role?",
+        },
+        {
+          name: 'salary',
+          type: 'input',
+          message: "What is the salary for this position?",
+        },
+        {
+          name: "department",
+          type: "rawlist",
+          message: "Which department should this role be added to?",
+          choices: roleChoices,
+        },
+      ])
+      .then((answer) => {
+        // if the answer matches a department from the db, grabs the department id for assignment to new role in db
+        res.forEach(value => {
+          if (answer.department === value.name) {
+            departmentId = value.id;
+          }
+        });
+        // adds role to db
+        connection.query(
+          'INSERT INTO role SET ?',
+            {
+            title: answer.roleTitle,
+            salary: answer.salary,
+            department_id: departmentId,
+            },
+        
+          (err, res) => {
+            if (err) throw err;
+            console.log(`\n-----\nA new role has been added: ${answer.roleTitle}.\n-----\n`);
+            loadPrompts();
+          }
+        );
+      });
+  });
+};
+
+// removes a role
+const remRole = () => {
+  let remRoleChoices = [];
+
+  // finds all roles to present as inquirer choices
+  connection.query("SELECT role.title FROM role", (err, res) => {
+    if (err) throw err;
+      res.forEach(choice => {
+        remRoleChoices.push(choice.title);
+      });
+  
+      inquirer.prompt([
+        {
+          name: "roleRemove",
+          type: "rawlist",
+          message: "Which role would you like to remove?",
+          choices: remRoleChoices,
         }
-        inquirer.prompt({
-            type: "list",
-            message: "Which employee would you like to delete?",
-            choices: empArray,
-            name: "employee"
-        }).then(function({employee}) {
-            const empId = employees[empArray.indexOf(employee)].id;
-            orm.deleteRecord("employees", empId)
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        });
-    });
-}
+      ])
+        .then((answer) => {
+          // removes role based on title selected from inquirer
+          connection.query(`DELETE FROM role WHERE role.title = ?`, [answer.roleRemove] , (err, res) => {
+            if (err) throw err;
+            console.log(`\n-----\n${answer.roleRemove} has been removed.\n-----\n`);
+            loadPrompts();
+          });
+      });
+  });
+};
 
-// Grabs all roles, asks user which one they want to delete, then calls ORM function to delete it from the database
-function deleteRolePrompt() {
-    orm.getRoles()
-    .then(function(roles) {
-        const roleArray = [];
-        for (let i=0; i<roles.length; i++) {
-            roleArray.push(roles[i].title);
+// displays all departments
+const getAllDept = () => {
+  connection.query('SELECT department.name FROM department', (err, res) => {
+    if (err) throw err;
+    console.table(res);
+    loadPrompts();
+  });
+};
+
+// adds new department
+const addDept = () => {
+  inquirer.prompt([
+    {
+      name: "deptName",
+      type: "input",
+      message: "What is the name of the new department?",
+    }
+  ])
+    .then((answer) => {
+      connection.query(
+        'INSERT INTO department SET ?',
+          {
+          name: answer.deptName,
+          },
+      
+        (err, res) => {
+          if (err) throw err;
+          console.log(`\n-----\nA new department has been added: ${answer.deptName}.\n-----\n`);
+          loadPrompts();
         }
-        inquirer.prompt({
-            type: "list",
-            message: "Which role would you like to delete?",
-            choices: roleArray,
-            name: "role"
-        }).then(function({role}) {
-            const roleId = roles[roleArray.indexOf(role)].id;
-            orm.deleteRecord("roles", roleId)
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        });
-    });
-}
+      );
+  });
+};
 
-// Grabs all departments, asks user which one they want to delete, then calls ORM function to delete it from the database
-function deleteDepartmentPrompt() {
-    orm.getDepartments()
-    .then(function(depts) {
-        const deptArray = [];
-        for (let i=0; i<depts.length; i++) {
-            deptArray.push(depts[i].name);
+// removes existing department
+const remDept = () => {
+  let deptChoices = [];
+
+  // used to display choices for which department to remove - will only return existing departments
+  connection.query("SELECT department.name FROM department", (err, res) => {
+    if (err) throw err;
+      res.forEach(choice => {
+        deptChoices.push(choice.name);
+      });
+  
+      inquirer.prompt([
+        {
+          name: "deptRemove",
+          type: "rawlist",
+          message: "Which department would you like to remove?",
+          choices: deptChoices,
         }
-        inquirer.prompt({
-            type: "list",
-            message: "Which department would you like to delete?",
-            choices: deptArray,
-            name: "dept"
-        }).then(function({dept}) {
-            const deptId = depts[deptArray.indexOf(dept)].id;
-            orm.deleteRecord("departments", deptId)
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        });
-    });
+      ])
+        .then((answer) => {
+          // deletes department based on user choice
+          connection.query(`DELETE FROM department WHERE department.name = ?`, [answer.deptRemove] , (err, res) => {
+            if (err) throw err;
+            console.log(`\n-----\n${answer.deptRemove} and its employees have been removed.\n-----\n`);
+            loadPrompts();
+          });
+      });
+  });
+};
+
+// exits application
+const quit = () => {
+  process.exit();
 }
 
-// Grabs all departments, asks user for which one they want to see sum of salaries, then calls ORM function to query database and display results
-function displayUtilizedBudgetPrompt() {
-    orm.getDepartments()
-    .then(function(depts) {
-        const deptArray = [];
-        for (let i=0; i<depts.length; i++) {
-            deptArray.push(depts[i].name);
-        }
-        inquirer.prompt({
-            type: "list",
-            message: "For which department would you like to view the utilized budget?",
-            choices: deptArray,
-            name: "dept"
-        }).then(function({dept}) {
-            const deptId = depts[deptArray.indexOf(dept)].id;
-            orm.viewUtilizedBudget(deptId)
-            .then(function() {
-                console.log("\n");
-                mainMenu();
-            });
-        });
-    });
-}
-
-mainMenu();
+// establishes connection loads prompts to begin application
+connection.connect((err) => {
+    if (err) throw err;
+    console.log(`Connected as id ${connection.threadId}`);
+    loadPrompts()
+});
